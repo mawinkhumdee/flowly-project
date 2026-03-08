@@ -5,6 +5,7 @@ export default function BottomNav({ activeTab, onChangeTab }) {
         { id: 'timeline', icon: 'timeline', label: 'Timeline' },
         { id: 'map', icon: 'map', label: 'Map' },
         { id: 'trips', icon: 'list_alt', label: 'Trips' },
+        { id: 'profile', icon: 'person', label: 'Profile' }, // ADDED PROFILE
     ];
 
     return (
