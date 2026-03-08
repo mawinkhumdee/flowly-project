@@ -1,8 +1,49 @@
-import React from 'react';
+// src/ui/pages/ProfilePage.jsx
+import React, { useState, useEffect } from 'react';
+import { api } from '../../infrastructure/api/apiClient';
 
-const API_BASE_URL = 'http://localhost:8080/api';
+export default function ProfilePage({ user, onLogout, trips = [] }) {
+    const [stats, setStats] = useState({ countries: 0, cities: 0, distance: 0 });
 
-export default function Profile({ user, onLogout }) {
+    useEffect(() => {
+        const calculateStats = async () => {
+            if (!user) return;
+            try {
+                // Fetch ALL stops for this user across all trips
+                const allStopsPromises = trips.map(trip => api.getStops(trip.id || trip._id, user.id || user._id));
+                const allStopsResults = await Promise.all(allStopsPromises);
+                const allStops = allStopsResults.flat();
+
+                const countries = new Set();
+                const cities = new Set();
+                let totalDistance = 0;
+
+                allStops.forEach(stop => {
+                    if (stop.country) countries.add(stop.country);
+                    if (stop.city) cities.add(stop.city);
+                    // Add transit distance if available (heuristic from time or cached)
+                    if (stop.transit && stop.transit.time) {
+                        const mins = parseInt(stop.transit.time);
+                        if (!isNaN(mins)) {
+                            // Rough estimation for stats: 1 min walk ~ 0.08km, 1 min Uber ~ 0.5km
+                            totalDistance += stop.transit.mode === 'directions_walk' ? mins * 0.08 : mins * 0.5;
+                        }
+                    }
+                });
+
+                setStats({
+                    countries: countries.size,
+                    cities: cities.size,
+                    distance: Math.round(totalDistance)
+                });
+            } catch (error) {
+                console.error('Error calculating dashboard stats:', error);
+            }
+        };
+
+        calculateStats();
+    }, [user, trips]);
+
     if (!user) return null;
 
     return (
@@ -33,6 +74,22 @@ export default function Profile({ user, onLogout }) {
                     </button>
                 </div>
 
+                {/* Travel Dashboard Stats */}
+                <div className="grid grid-cols-3 gap-4 mb-10">
+                    <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm text-center group hover:border-[#0f8201]/30 transition-all">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Countries</p>
+                        <p className="text-2xl font-bold text-[#0f8201]">{stats.countries}</p>
+                    </div>
+                    <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm text-center group hover:border-[#0f8201]/30 transition-all">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">Cities</p>
+                        <p className="text-2xl font-bold text-[#0f8201]">{stats.cities}</p>
+                    </div>
+                    <div className="bg-white rounded-3xl p-5 border border-gray-100 shadow-sm text-center group hover:border-[#0f8201]/30 transition-all">
+                        <p className="text-[10px] font-bold text-slate-400 uppercase tracking-widest mb-2">KM Moved</p>
+                        <p className="text-2xl font-bold text-[#0f8201]">{stats.distance}</p>
+                    </div>
+                </div>
+
                 {/* Settings Section */}
                 <div className="space-y-4">
                     <h3 className="text-[10px] font-bold text-slate-400 uppercase tracking-[0.2em] ml-4 mb-2">Trip Settings</h3>
@@ -60,19 +117,6 @@ export default function Profile({ user, onLogout }) {
                             <div>
                                 <p className="font-bold text-base">Travel Buddy Invites</p>
                                 <p className="text-xs text-slate-400">Allow others to invite you to trips</p>
-                            </div>
-                        </div>
-                        <span className="material-symbols-outlined text-slate-300 group-hover:text-[#0f8201] transition-colors">chevron_right</span>
-                    </div>
-
-                    <div className="bg-white rounded-2xl p-5 shadow-sm border border-gray-100 flex items-center justify-between group hover:border-[#0f8201]/30 transition-all cursor-pointer">
-                        <div className="flex items-center gap-4">
-                            <div className="w-12 h-12 rounded-xl bg-orange-50 text-orange-500 flex items-center justify-center">
-                                <span className="material-symbols-outlined">notifications</span>
-                            </div>
-                            <div>
-                                <p className="font-bold text-base">Arrival Alerts</p>
-                                <p className="text-xs text-slate-400">Notify friends when you mark a stop as done</p>
                             </div>
                         </div>
                         <span className="material-symbols-outlined text-slate-300 group-hover:text-[#0f8201] transition-colors">chevron_right</span>

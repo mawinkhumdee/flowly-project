@@ -1,8 +1,8 @@
+// src/ui/pages/TripManagerPage.jsx
 import React from 'react';
+import { api } from '../../infrastructure/api/apiClient';
 
-const API_BASE_URL = 'http://localhost:8080/api';
-
-export default function TripManager({ user, trips = [], onSelectTrip, onRefresh }) {
+export default function TripManagerPage({ user, trips = [], onSelectTrip, onRefresh }) {
     
     const handleCreateTrip = async () => {
         if (!user) {
@@ -13,19 +13,13 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
         if (!title) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/trips`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ 
-                    title, 
-                    userId: user.id || user._id, // ENSURE USER ID IS SENT
-                    status: 'In Progress', 
-                    isPublic: false 
-                }),
+            await api.createTrip({ 
+                title, 
+                userId: user.id || user._id, 
+                status: 'In Progress', 
+                isPublic: false 
             });
-            if (response.ok) {
-                await onRefresh();
-            }
+            await onRefresh();
         } catch (error) {
             console.error('Error creating trip:', error);
         }
@@ -36,12 +30,8 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
         if (!window.confirm("Are you sure you want to delete this trip and all its stops?")) return;
 
         try {
-            const response = await fetch(`${API_BASE_URL}/trips/${tripId}`, {
-                method: 'DELETE',
-            });
-            if (response.ok) {
-                await onRefresh();
-            }
+            await api.deleteTrip(tripId);
+            await onRefresh();
         } catch (error) {
             console.error('Error deleting trip:', error);
         }
@@ -51,14 +41,8 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
         e.stopPropagation();
         const newStatus = !trip.isPublic;
         try {
-            const response = await fetch(`${API_BASE_URL}/trips/${trip.id || trip._id}/sharing`, {
-                method: 'PUT',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ isPublic: newStatus }),
-            });
-            if (response.ok) {
-                await onRefresh();
-            }
+            await api.updateTripSharing(trip.id || trip._id, newStatus);
+            await onRefresh();
         } catch (error) {
             console.error('Error updating sharing:', error);
         }
@@ -74,7 +58,6 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
     return (
         <div className="flex-1 w-full bg-[#f6f8f5] font-sans text-[#1A1A1A] flex flex-col pt-8 px-4 md:px-8 pb-32 overflow-y-auto no-scrollbar">
             <div className="max-w-2xl mx-auto w-full">
-                {/* Header */}
                 <header className="flex items-center justify-between mb-8">
                     <div>
                         <h1 className="text-3xl font-bold tracking-tight text-[#1A1A1A]">My Journeys</h1>
@@ -85,10 +68,7 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
                     </button>
                 </header>
 
-                {/* Main Content Grid */}
                 <main className="grid grid-cols-1 sm:grid-cols-2 gap-4 md:gap-6">
-
-                    {/* Create New Card */}
                     <button 
                         onClick={handleCreateTrip}
                         className="group w-full aspect-square sm:aspect-auto sm:h-48 rounded-[32px] border-2 border-dashed border-slate-200 hover:border-[#0f8201] hover:bg-[#0f8201]/5 transition-all duration-300 flex flex-col items-center justify-center gap-4 bg-transparent"
@@ -99,7 +79,6 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
                         <span className="text-slate-500 font-bold text-sm group-hover:text-[#0f8201] transition-colors tracking-wide">New Trip</span>
                     </button>
 
-                    {/* Trip Cards */}
                     {trips.map(trip => (
                         <div
                             key={trip.id || trip._id}
@@ -120,17 +99,14 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
                                         </span>
                                     </div>
                                 </div>
-                                <div className="flex flex-col gap-2">
-                                    <button 
-                                        onClick={(e) => handleDeleteTrip(e, trip.id || trip._id)}
-                                        className="w-8 h-8 rounded-full bg-red-50 text-red-400 opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
-                                    >
-                                        <span className="material-symbols-outlined text-[18px]">delete</span>
-                                    </button>
-                                </div>
+                                <button 
+                                    onClick={(e) => handleDeleteTrip(e, trip.id || trip._id)}
+                                    className="w-8 h-8 rounded-full bg-red-50 text-red-400 opacity-0 group-hover:opacity-100 flex items-center justify-center hover:bg-red-500 hover:text-white transition-all shadow-sm"
+                                >
+                                    <span className="material-symbols-outlined text-[18px]">delete</span>
+                                </button>
                             </div>
 
-                            {/* Share Actions Area */}
                             <div className="flex items-center gap-2 mt-auto pt-4 border-t border-gray-50 relative z-10">
                                 <button 
                                     onClick={(e) => toggleSharing(e, trip)}
@@ -149,8 +125,6 @@ export default function TripManager({ user, trips = [], onSelectTrip, onRefresh 
                                     </button>
                                 )}
                             </div>
-
-                            {/* Background decoration */}
                             <div className="absolute top-0 right-0 w-24 h-24 bg-[#0f8201]/5 rounded-full -mr-12 -mt-12 transition-transform group-hover:scale-150 duration-700"></div>
                         </div>
                     ))}
